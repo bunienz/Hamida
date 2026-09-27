@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FLASH QUIZ ! - Game Kuis Interaktif Multi-Tim</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandBlue: '#2563eb',
+            brandYellow: '#f59e0b',
+            brandGreen: '#10b981',
+            brandOrange: '#f97316',
+            brandPurple: '#8b5cf6',
+            brandPink: '#ec4899',
+          },
+          fontFamily: {
+            fredoka: ['Fredoka', 'cursive', 'sans-serif'],
+            poppins: ['Poppins', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- FontAwesome Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts CDN -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #f0fdf4;
+      background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px), radial-gradient(#cbd5e1 1.5px, #f8fafc 1.5px);
+      background-size: 60px 60px;
+      background-position: 0 0, 30px 30px;
+      min-height: 100vh;
+    }
+
+    .font-fredoka {
+      font-family: 'Fredoka', cursive, sans-serif;
+    }
+
+    /* Animasi Kartu Pop In */
+    .pop-in {
+      animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.85); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Countdown Overlay */
+    .countdown-anim {
+      animation: countPulse 0.8s ease-in-out infinite alternate;
+    }
+
+    @keyframes countPulse {
+      0% { transform: scale(0.9); opacity: 0.8; }
+      100% { transform: scale(1.15); opacity: 1; }
+    }
+
+    /* Print Style Optimization */
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white !important; color: black !important; background-image: none !important; }
+      .shadow-custom { box-shadow: none !important; border: 1px solid #ccc !important; }
+    }
+  </style>
+</head>
+<body class="text-slate-800 antialiased selection:bg-yellow-300 selection:text-slate-900">
+
+  <div id="app" class="min-h-screen flex flex-col justify-between">
+    
+    <!-- HEADER BAR PERMAINAN (Selalu Tampak) -->
+    <header class="no-print bg-white/90 backdrop-blur-md border-b-4 border-slate-200 sticky top-0 z-40 px-4 py-3 shadow-sm">
+      <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3 cursor-pointer" @click="goToHome">
+          <div class="bg-gradient-to-tr from-brandYellow to-brandOrange text-white font-fredoka text-2xl font-bold px-3 py-1 rounded-2xl shadow-md border-2 border-white transform -rotate-2">
+            ⚡ FLASH
+          </div>
+          <div class="hidden sm:block">
+            <h1 class="font-fredoka text-xl font-bold text-slate-800 leading-none">QUIZ !</h1>
+            <p class="text-xs text-slate-500 font-medium">Multi-Team Classroom Edition</p>
+          </div>
+        </div>
+
+        <!-- Indikator Judul Kuis/Termen & Navigasi Cepat -->
+        <div class="text-center hidden md:block">
+          <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+            <i class="fa-solid fa-bookmark mr-1"></i> {{ gameConfig.termen || 'Sesi Kuis' }}
+          </span>
+        </div>
+
+        <!-- Controls Header -->
+        <div class="flex items-center gap-2">
+          <button @click="toggleSound" class="p-2.5 rounded-xl border-2 font-bold transition-all text-sm flex items-center gap-1.5"
+                  :class="soundEnabled ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100' : 'bg-rose-50 border-rose-300 text-rose-700 hover:bg-rose-100'">
+            <i :class="soundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark'"></i>
+            <span class="hidden sm:inline">{{ soundEnabled ? 'Suara ON' : 'Suara OFF' }}</span>
+          </button>
+
+          <button v-if="currentScreen !== 'setup'" @click="showConfirmReset = true" class="p-2.5 rounded-xl border-2 border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold text-sm transition-all" title="Kembali Ke Menu Utama">
+            <i class="fa-solid fa-house"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT WRAPPER -->
+    <main class="flex-grow max-w-6xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+
+      <!-- ========================================== -->
+      <!-- 1. SCREEN: PENGATURAN GAME & TIM (SETUP)  -->
+      <!-- ========================================== -->
+      <section v-if="currentScreen === 'setup'" class="pop-in space-y-6">
+        
+        <!-- BANNER WELCOME -->
+        <div class="bg-gradient-to-r from-brandBlue via-indigo-600 to-brandPurple text-white rounded-3xl p-6 md:p-8 shadow-xl text-center relative overflow-hidden">
+          <div class="absolute -right-6 -bottom-6 text-white/10 text-9xl font-black font-fredoka select-none pointer-events-none">⚡</div>
+          <h2 class="font-fredoka text-3xl md:text-5xl font-extrabold tracking-wide mb-2 drop-shadow-md">
+            FLASH QUIZ !
+          </h2>
+          <p class="text-indigo-100 text-sm md:text-base max-w-2xl mx-auto font-medium">
+            Platform kuis kompetitif multi-tim interaktif yang seru, edukatif, dan siap digunakan untuk seluruh mata pelajaran SMP!
+          </p>
+        </div>
+
+        <!-- FORM PENGATURAN DASAR -->
+        <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-slate-100 space-y-6">
+          <div class="border-b-2 border-slate-100 pb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 class="font-fredoka text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-brandBlue"></i> 1. Pengaturan Sesi & Soal
+              </h3>
+              <p class="text-xs text-slate-500">Tentukan topik/termen kuis dan aturan poin dasar.</p>
+            </div>
+            
+            <button @click="loadSampleData" class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border-2 border-amber-300 rounded-xl font-bold text-xs flex items-center gap-2 transition-all">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Muat Soal Contoh (Demo)
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1">
+                Termen / Mata Pelajaran / Judul Kuis <span class="text-rose-500">*</span>
+              </label>
+              <input type="text" v-model="gameConfig.termen" placeholder="Contoh: Kuis Umum IPA & Matematika BAB 1" 
+                     class="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-brandBlue focus:ring-0 outline-none font-semibold text-slate-800 transition-all">
+            </div>
+
+            <div>
+              <label class="block text-sm font-bold text-slate-700 mb-1">
+                Default Poin Per Soal <span class="text-rose-500">*</span>
+              </label>
+              <div class="flex items-center gap-2">
+                <input type="number" min="1" v-model.number="gameConfig.defaultPoints" @change="applyGlobalPoints"
+                       class="w-full px-4 py-3 rounded-2xl border-2 border-slate-200 focus:border-brandBlue focus:ring-0 outline-none font-semibold text-slate-800 transition-all">
+                <span class="text-xs font-bold text-slate-500 whitespace-nowrap bg-slate-100 px-3 py-3 rounded-2xl">Poin / Soal</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FORM PENGATURAN TIM -->
+        <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-slate-100 space-y-6">
+          <div class="border-b-2 border-slate-100 pb-4 flex items-center justify-between">
+            <div>
+              <h3 class="font-fredoka text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-users text-brandGreen"></i> 2. Kelola Kelompok / Tim ({{ teams.length }} Tim)
+              </h3>
+              <p class="text-xs text-slate-500">Atur kelompok siswa yang bertanding beserta nama anggotanya.</p>
+            </div>
+            
+            <button @click="addTeam" class="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-sm shadow-md flex items-center gap-2 transition-all transform hover:scale-105">
+              <i class="fa-solid fa-plus"></i> Tambah Tim
+            </button>
+          </div>
+
+          <!-- LIST CARD TIM -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div v-for="(team, tIdx) in teams" :key="tIdx" 
+                 class="border-2 rounded-2xl p-4 space-y-3 relative transition-all"
+                 :class="getTeamColorBorderClass(tIdx)">
+              
+              <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 flex-grow">
+                  <span class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-xs shadow" :class="getTeamBgClass(tIdx)">
+                    {{ tIdx + 1 }}
+                  </span>
+                  <input type="text" v-model="team.name" placeholder="Nama Tim" 
+                         class="font-bold text-slate-800 bg-transparent border-b-2 border-slate-200 focus:border-slate-600 outline-none px-1 py-0.5 w-full text-base">
+                </div>
+
+                <button @click="removeTeam(tIdx)" v-if="teams.length > 2" class="text-slate-400 hover:text-rose-500 transition-colors p-1" title="Hapus Tim">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+
+              <!-- ANGGOTA TIM -->
+              <div class="space-y-2 pt-2 border-t border-slate-100">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-500">
+                    <i class="fa-solid fa-user-group"></i> Anggota ({{ team.members.length }})
+                  </span>
+                  <button @click="addMember(tIdx)" class="text-xs font-bold text-brandBlue hover:text-indigo-700 transition-colors">
+                    + Tambah Anggota
+                  </button>
+                </div>
+
+                <div class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                  <div v-for="(member, mIdx) in team.members" :key="mIdx" class="flex items-center gap-2">
+                    <input type="text" v-model="team.members[mIdx]" :placeholder="'Anggota ' + (mIdx + 1)"
+                           class="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 w-full outline-none focus:bg-white focus:border-indigo-400 transition-all">
+                    <button @click="removeMember(tIdx, mIdx)" v-if="team.members.length > 1" class="text-slate-300 hover:text-rose-500 text-xs px-1">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NAVIGASI KE INPUT SOAL -->
+        <div class="flex items-center justify-between pt-2">
+          <div class="text-xs text-slate-500 font-medium">
+            <i class="fa-solid fa-circle-info text-amber-500"></i> Minimal 2 Tim dan 1 Soal untuk memulai permainan.
+          </div>
+
+          <button @click="goToQuestions" class="px-8 py-4 bg-gradient-to-r from-brandBlue to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-fredoka text-xl font-bold rounded-2xl shadow-xl flex items-center gap-3 transition-all transform hover:scale-105">
+            Lanjut ke Kelola Soal <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+
+      </section>
+
+      <!-- ========================================== -->
+      <!-- 2. SCREEN: INPUT & KELOLA SOAL             -->
+      <!-- ========================================== -->
+      <section v-if="currentScreen === 'questions'" class="pop-in space-y-6">
+        
+        <div class="bg-white rounded-3xl p-6 shadow-lg border-2 border-slate-100 space-y-6">
+          <div class="border-b-2 border-slate-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 class="font-fredoka text-2xl font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-file-pen text-brandOrange"></i> Kelola Pertanyaan (Total: {{ questions.length }} Soal)
+              </h3>
+              <p class="text-xs text-slate-500">Tambahkan pertanyaan pilihan ganda atau benar/salah secara manual.</p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button @click="addQuestion" class="px-4 py-2.5 bg-brandOrange hover:bg-orange-600 text-white rounded-2xl font-bold text-sm shadow-md flex items-center gap-2 transition-all transform hover:scale-105">
+                <i class="fa-solid fa-plus"></i> Tambah Soal
+              </button>
+            </div>
+          </div>
+
+          <!-- SUMMARY POINT STATS -->
+          <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-indigo-900 text-xs md:text-sm font-semibold">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-calculator text-indigo-600 text-lg"></i>
+              <span>Estimasi Skor Maksimal Per Tim: <strong class="text-indigo-700 text-base font-bold">{{ totalPossiblePoints }} Poin</strong></span>
+            </div>
+            <div class="text-slate-500 font-normal">
+              (Total {{ questions.length }} soal × {{ gameConfig.defaultPoints }} poin)
+            </div>
+          </div>
+
+          <!-- SOAL LIST accordion/cards -->
+          <div v-if="questions.length === 0" class="text-center py-12 border-2 border-dashed border-slate-200 rounded-3xl">
+            <i class="fa-solid fa-folder-open text-5xl text-slate-300 mb-3"></i>
+            <p class="font-bold text-slate-600">Belum ada soal dibuat!</p>
+            <p class="text-xs text-slate-400 mb-4">Klik tombol di bawah untuk membuat pertanyaan pertama.</p>
+            <button @click="addQuestion" class="px-5 py-2.5 bg-brandOrange text-white rounded-xl font-bold text-sm shadow">
+              + Tambah Soal Baru
+            </button>
+          </div>
+
+          <div v-else class="space-y-6">
+            <div v-for="(q, index) in questions" :key="q.id" 
+                 class="border-2 border-slate-200 rounded-2xl p-5 bg-slate-50/50 space-y-4 hover:border-indigo-300 transition-all relative">
+              
+              <!-- CARD HEADER -->
+              <div class="flex items-center justify-between flex-wrap gap-2 border-b border-slate-200 pb-3">
+                <div class="flex items-center gap-3">
+                  <span class="w-9 h-9 rounded-xl bg-slate-800 text-white font-fredoka font-bold text-sm flex items-center justify-center shadow">
+                    #{{ index + 1 }}
+                  </span>
+                  
+                  <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-slate-500">Tipe Soal:</label>
+                    <select v-model="q.type" @change="handleTypeChange(q)" class="bg-white border-2 border-slate-200 text-xs font-bold rounded-xl px-3 py-1.5 outline-none focus:border-brandBlue">
+                      <option value="mc">Pilihan Ganda (4 Opsi)</option>
+                      <option value="tf">Benar / Salah</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-1 bg-white border border-slate-200 px-3 py-1 rounded-xl text-xs font-bold text-slate-600">
+                    <span>Poin:</span>
+                    <input type="number" v-model.number="q.points" class="w-12 text-center border-b border-slate-300 outline-none font-extrabold text-indigo-600">
+                  </div>
+
+                  <button @click="duplicateQuestion(index)" class="p-2 text-slate-500 hover:text-brandBlue hover:bg-indigo-50 rounded-lg transition-colors text-xs font-bold" title="Duplikasi Soal">
+                    <i class="fa-solid fa-copy"></i> Duplikasi
+                  </button>
+
+                  <button @click="removeQuestion(index)" class="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors text-xs font-bold" title="Hapus Soal">
+                    <i class="fa-solid fa-trash-can"></i> Hapus
+                  </button>
+                </div>
+              </div>
+
+              <!-- TEXT PERTANYAAN -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Pertanyaan / Soal:</label>
+                <textarea v-model="q.question" rows="2" placeholder="Tuliskan pertanyaan di sini..."
+                          class="w-full px-4 py-2.5 text-sm font-semibold text-slate-800 bg-white border-2 border-slate-200 rounded-xl focus:border-brandBlue outline-none transition-all"></textarea>
+              </div>
+
+              <!-- OPSI JAWABAN PILIHAN GANDA -->
+              <div v-if="q.type === 'mc'" class="space-y-3 pt-1">
+                <label class="block text-xs font-bold text-slate-700">Pilihan Jawaban (Pilih Lingkaran Untuk Jawaban Benar):</label>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div v-for="(opt, optIdx) in ['A','B','C','D']" :key="opt" 
+                       class="flex items-center gap-2 bg-white p-2 border-2 rounded-xl"
+                       :class="q.correctAnswer === optIdx ? 'border-emerald-500 bg-emerald-50/30' : 'border-slate-200'">
+                    
+                    <button type="button" @click="q.correctAnswer = optIdx" 
+                            class="w-7 h-7 rounded-full border-2 font-bold text-xs flex items-center justify-center transition-all shrink-0"
+                            :class="q.correctAnswer === optIdx ? 'bg-emerald-500 border-emerald-500 text-white shadow' : 'border-slate-300 text-slate-400 hover:border-slate-400'">
+                      {{ opt }}
+                    </button>
+
+                    <input type="text" v-model="q.options[optIdx]" :placeholder="'Pilihan ' + opt"
+                           class="w-full bg-transparent text-xs font-semibold text-slate-800 outline-none px-1">
+                  </div>
+                </div>
+              </div>
+
+              <!-- OPSI BENAR / SALAH -->
+              <div v-if="q.type === 'tf'" class="pt-1">
+                <label class="block text-xs font-bold text-slate-700 mb-2">Jawaban Benar Untuk Pernyataan Di Atas:</label>
+                <div class="flex items-center gap-4">
+                  <label class="flex items-center gap-2 bg-white border-2 px-4 py-2.5 rounded-xl cursor-pointer transition-all"
+                         :class="q.correctAnswer === true ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-bold' : 'border-slate-200 text-slate-600'">
+                    <input type="radio" :name="'tf_' + q.id" :value="true" v-model="q.correctAnswer" class="hidden">
+                    <i class="fa-solid fa-circle-check text-emerald-500"></i> BENAR
+                  </label>
+
+                  <label class="flex items-center gap-2 bg-white border-2 px-4 py-2.5 rounded-xl cursor-pointer transition-all"
+                         :class="q.correctAnswer === false ? 'border-rose-500 bg-rose-50 text-rose-800 font-bold' : 'border-slate-200 text-slate-600'">
+                    <input type="radio" :name="'tf_' + q.id" :value="false" v-model="q.correctAnswer" class="hidden">
+                    <i class="fa-solid fa-circle-xmark text-rose-500"></i> SALAH
+                  </label>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- TOMBOL NAVIGASI -->
+        <div class="flex items-center justify-between pt-2">
+          <button @click="currentScreen = 'setup'" class="px-6 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-2xl text-sm transition-all">
+            <i class="fa-solid fa-arrow-left"></i> Kembali Ke Pengaturan
+          </button>
+
+          <button @click="startConfirmation" :disabled="questions.length === 0" 
+                  class="px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 disabled:opacity-50 text-white font-fredoka text-xl font-bold rounded-2xl shadow-xl flex items-center gap-3 transition-all transform hover:scale-105">
+            Mulai Permainan <i class="fa-solid fa-play"></i>
+          </button>
+        </div>
+
+      </section>
+
+      <!-- ========================================== -->
+      <!-- 3. SCREEN: KONFIRMASI GAME (READY)         -->
+      <!-- ========================================== -->
+      <section v-if="currentScreen === 'confirm'" class="pop-in max-w-2xl mx-auto w-full">
+        <div class="bg-white rounded-3xl p-8 shadow-2xl border-4 border-amber-300 text-center space-y-6">
+          
+          <div class="w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto text-4xl shadow-inner">
+            <i class="fa-solid fa-flag-checkered"></i>
+          </div>
+
+          <div>
+            <h2 class="font-fredoka text-3xl font-extrabold text-slate-800">Siap Bertanding?</h2>
+            <p class="text-sm text-slate-500 mt-1">Periksa ringkasan aturan kuis sebelum dimulai.</p>
+          </div>
+
+          <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 text-left space-y-3">
+            <div class="flex justify-between border-b pb-2 text-sm">
+              <span class="text-slate-500 font-semibold">Judul Sesi:</span>
+              <span class="font-bold text-slate-800">{{ gameConfig.termen }}</span>
+            </div>
+            <div class="flex justify-between border-b pb-2 text-sm">
+              <span class="text-slate-500 font-semibold">Jumlah Tim:</span>
+              <span class="font-bold text-emerald-600">{{ teams.length }} Kelompok</span>
+            </div>
+            <div class="flex justify-between border-b pb-2 text-sm">
+              <span class="text-slate-500 font-semibold">Total Soal:</span>
+              <span class="font-bold text-brandBlue">{{ questions.length }} Soal</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-500 font-semibold">Sistem Rotasi:</span>
+              <span class="font-bold text-purple-600">Bergantian Secara Otomatis</span>
+            </div>
+          </div>
+
+          <!-- NAMA TIM LIST -->
+          <div class="flex flex-wrap justify-center gap-2">
+            <span v-for="(t, idx) in teams" :key="idx" 
+                  class="px-3 py-1.5 rounded-xl font-bold text-xs text-white shadow-sm"
+                  :class="getTeamBgClass(idx)">
+              {{ t.name }} ({{ t.members.length }} Anggota)
+            </span>
+          </div>
+
+          <div class="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button @click="currentScreen = 'questions'" class="w-full sm:w-auto px-6 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-2xl text-sm transition-all">
+              <i class="fa-solid fa-pen-to-square"></i> Ubah Soal
+            </button>
+
+            <button @click="launchQuizBattle" class="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-brandYellow to-brandOrange hover:from-amber-500 hover:to-orange-600 text-slate-900 font-fredoka text-2xl font-black rounded-2xl shadow-xl transform hover:scale-105 transition-all">
+              🚀 MULAI QUIZ BATTLE !
+            </button>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ========================================== -->
+      <!-- 4. SCREEN: QUIZ BATTLE (FLASHCARD GAME)   -->
+      <!-- ========================================== -->
+      <section v-if="currentScreen === 'game'" class="pop-in space-y-6 max-w-4xl mx-auto w-full relative">
+        
+        <!-- READY SET GO OVERLAY ANIMATED -->
+        <div v-if="showReadyOverlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div class="text-center text-white space-y-4">
+            <div class="text-7xl md:text-9xl font-black font-fredoka text-amber-400 countdown-anim drop-shadow-lg">
+              {{ countdownText }}
+            </div>
+            <div class="text-2xl font-bold tracking-widest text-slate-200 uppercase">
+              Giliran: <span class="text-yellow-300 font-fredoka">{{ currentTurnTeam.name }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- BAR SKOR & GILIRAN SEMENTARA -->
+        <div class="bg-white rounded-3xl p-4 md:p-5 shadow-lg border-2 border-slate-100 space-y-4">
+          
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <!-- HEADER INDIKATOR SOAL -->
+            <div class="flex items-center gap-3">
+              <span class="px-3 py-1 bg-brandBlue text-white font-fredoka text-xs font-bold rounded-xl tracking-wider uppercase">
+                QUIZ BATTLE
+              </span>
+              <span class="font-fredoka text-lg font-bold text-slate-700">
+                Soal <span class="text-brandBlue">{{ currentQuestionIndex + 1 }}</span> dari {{ questions.length }}
+              </span>
+            </div>
+
+            <!-- GILIRAN TIM BADGE -->
+            <div class="flex items-center gap-2 bg-amber-50 border-2 border-amber-300 px-4 py-1.5 rounded-2xl animate-pulse">
+              <span class="text-xs font-bold text-amber-700">GILIRAN SAAT INI:</span>
+              <span class="font-fredoka text-base font-extrabold text-amber-900 flex items-center gap-1.5">
+                🎯 {{ currentTurnTeam.name }}
+              </span>
+            </div>
+          </div>
+
+          <!-- PROGRESS BAR -->
+          <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
+            <div class="bg-gradient-to-r from-brandBlue to-emerald-400 h-full transition-all duration-500"
+                 :style="{ width: ((currentQuestionIndex + 1) / questions.length * 100) + '%' }"></div>
+          </div>
+
+          <!-- SUMMARY SCORECARD ALL TEAMS -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1">
+            <div v-for="(t, idx) in teams" :key="idx" 
+                 class="p-2.5 rounded-2xl border-2 transition-all flex items-center justify-between"
+                 :class="currentTurnIndex === idx ? getTeamActiveCardClass(idx) : 'border-slate-200 bg-slate-50 opacity-80'">
+              
+              <div class="truncate pr-1">
+                <p class="text-xs font-bold truncate" :class="currentTurnIndex === idx ? 'text-slate-900' : 'text-slate-600'">
+                  {{ t.name }}
+                </p>
+
+                <!-- Anggota yang aktif bergiliran (jika ada) -->
+                <p class="text-[10px] text-slate-500 truncate" v-if="t.members.length > 0">
+                  <i class="fa-solid fa-user"></i> {{ getActiveMemberName(t) }}
+                </p>
+              </div>
+
+              <div class="text-right shrink-0">
+                <span class="font-fredoka font-extrabold text-sm md:text-base" :class="getTeamTextColorClass(idx)">
+                  {{ t.score }}
+                </span>
+                <span class="text-[10px] text-slate-400 block font-bold">Poin</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- KARTU SOAL UTAMA (FLASHCARD) -->
+        <div class="bg-white rounded-3xl p-6 md:p-10 shadow-2xl border-4 border-slate-200 space-y-8 relative overflow-hidden">
+          
+          <div class="flex items-center justify-between text-xs font-bold text-slate-400 border-b border-slate-100 pb-3">
+            <span>
+              <i class="fa-solid fa-layer-group text-brandBlue"></i> 
+              Tipe: {{ activeQuestion.type === 'mc' ? 'Pilihan Ganda' : 'Benar / Salah' }}
+            </span>
+            <span class="bg-amber-100 text-amber-800 px-3 py-1 rounded-full font-fredoka font-bold">
+              +{{ activeQuestion.points }} POIN
+            </span>
+          </div>
+
+          <!-- PERTANYAAN TERBAKA -->
+          <div class="text-center py-4 px-2">
+            <h3 class="font-fredoka text-2xl md:text-4xl font-extrabold text-slate-800 leading-relaxed md:leading-snug">
+              {{ activeQuestion.question }}
+            </h3>
+          </div>
+
+          <!-- OPSI PILIHAN GANDA (MC) -->
+          <div v-if="activeQuestion.type === 'mc'" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <button v-for="(optText, optIdx) in activeQuestion.options" :key="optIdx"
+                    @click="submitAnswer(optIdx)"
+                    :disabled="isAnswered"
+                    class="p-5 rounded-2xl border-3 border-slate-200 hover:border-brandBlue hover:bg-indigo-50/50 transition-all text-left flex items-center gap-4 group transform hover:-translate-y-1 active:translate-y-0 shadow-sm disabled:pointer-events-none">
+              
+              <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 group-hover:bg-brandBlue group-hover:text-white font-fredoka text-lg font-bold flex items-center justify-center shrink-0 transition-colors shadow-inner">
+                {{ ['A','B','C','D'][optIdx] }}
+              </span>
+
+              <span class="font-bold text-slate-700 group-hover:text-slate-900 text-base md:text-lg leading-snug">
+                {{ optText }}
+              </span>
+            </button>
+          </div>
+
+          <!-- OPSI BENAR / SALAH (TF) -->
+          <div v-if="activeQuestion.type === 'tf'" class="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+            <button @click="submitAnswer(true)" :disabled="isAnswered"
+                    class="p-6 bg-emerald-50 hover:bg-emerald-100 border-4 border-emerald-400 rounded-3xl flex items-center justify-center gap-3 transition-all transform hover:scale-105 shadow-md group disabled:pointer-events-none">
+              <i class="fa-solid fa-circle-check text-3xl text-emerald-500"></i>
+              <span class="font-fredoka text-3xl font-extrabold text-emerald-800">✅ BENAR</span>
+            </button>
+
+            <button @click="submitAnswer(false)" :disabled="isAnswered"
+                    class="p-6 bg-rose-50 hover:bg-rose-100 border-4 border-rose-400 rounded-3xl flex items-center justify-center gap-3 transition-all transform hover:scale-105 shadow-md group disabled:pointer-events-none">
+              <i class="fa-solid fa-circle-xmark text-3xl text-rose-500"></i>
+              <span class="font-fredoka text-3xl font-extrabold text-rose-800">❌ SALAH</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- FEEDBACK REACTION MODAL / OVERLAY -->
+        <div v-if="showFeedback" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div class="bg-white rounded-3xl p-8 max-w-md w-full text-center space-y-6 shadow-2xl pop-in border-4"
+               :class="lastResult.isCorrect ? 'border-emerald-400' : 'border-rose-400'">
+            
+            <div class="w-24 h-24 rounded-full flex items-center justify-center mx-auto text-5xl shadow-inner"
+                 :class="lastResult.isCorrect ? 'bg-emerald-100 text-emerald-500' : 'bg-rose-100 text-rose-500'">
+              <i :class="lastResult.isCorrect ? 'fa-solid fa-trophy' : 'fa-solid fa-face-frown'"></i>
+            </div>
+
+            <div>
+              <h3 class="font-fredoka text-4xl font-extrabold"
+                  :class="lastResult.isCorrect ? 'text-emerald-600' : 'text-rose-600'">
+                {{ lastResult.isCorrect ? '🎉 BENAR!' : '😅 BELUM TEPAT!' }}
+              </h3>
+
+              <p class="font-fredoka text-2xl font-bold mt-2"
+                 :class="lastResult.isCorrect ? 'text-emerald-500' : 'text-slate-400'">
+                {{ lastResult.isCorrect ? '+' + activeQuestion.points + ' POIN' : '0 POIN' }}
+              </p>
+            </div>
+
+            <!-- UNTUK JAWABAN SALAH: TAMPILKAN KUNCI JAWABAN -->
+            <div v-if="!lastResult.isCorrect" class="bg-slate-100 p-4 rounded-2xl text-left border border-slate-200">
+              <p class="text-xs font-bold text-slate-500 uppercase mb-1">Jawaban Yang Benar:</p>
+              <p class="font-bold text-slate-800 text-sm">
+                {{ getCorrectAnswerText(activeQuestion) }}
+              </p>
+            </div>
+
+            <button @click="nextQuestion" class="w-full py-4 bg-gradient-to-r from-brandBlue to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-fredoka text-xl font-bold rounded-2xl shadow-lg transition-all transform hover:scale-105">
+              {{ currentQuestionIndex < questions.length - 1 ? 'Soal Berikutnya ⏭' : 'Lihat Hasil Akhir 🏆' }}
+            </button>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ========================================== -->
+      <!-- 5. SCREEN: HASIL AKHIR & RANKING          -->
+      <!-- ========================================== -->
+      <section v-if="currentScreen === 'results'" class="pop-in max-w-4xl mx-auto w-full space-y-8">
+        
+        <div class="bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 rounded-3xl p-8 text-white text-center shadow-2xl relative overflow-hidden">
+          <h2 class="font-fredoka text-4xl md:text-6xl font-black drop-shadow-md mb-2">
+            🏆 HASIL AKHIR QUIZ BATTLE
+          </h2>
+          <p class="text-amber-100 font-semibold text-sm md:text-base">
+            Selamat kepada seluruh tim yang telah berjuang dan belajar bersama!
+          </p>
+        </div>
+
+        <!-- PODIUM PERINGKAT TOP 3 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div v-for="(rankTeam, rIdx) in rankedTeams" :key="rIdx"
+               class="bg-white rounded-3xl p-6 shadow-xl border-4 text-center space-y-3 relative transform transition-all hover:-translate-y-1"
+               :class="rIdx === 0 ? 'border-amber-400 md:-translate-y-3' : (rIdx === 1 ? 'border-slate-300' : 'border-amber-700')">
+            
+            <!-- MEDAL BADGE -->
+            <div class="text-4xl">
+              <span v-if="rIdx === 0">🥇</span>
+              <span v-else-if="rIdx === 1">🥈</span>
+              <span v-else-if="rIdx === 2">🥉</span>
+              <span v-else class="text-xl font-bold text-slate-400">#{{ rIdx + 1 }}</span>
+            </div>
+
+            <h3 class="font-fredoka text-2xl font-bold text-slate-800">
+              {{ rankTeam.name }}
+            </h3>
+
+            <div class="bg-slate-50 py-2 px-4 rounded-2xl border border-slate-100">
+              <span class="font-fredoka text-3xl font-extrabold text-brandBlue">
+                {{ rankTeam.score }}
+              </span>
+              <span class="text-xs font-bold text-slate-400 block">TOTAL POIN</span>
+            </div>
+
+            <div class="text-xs text-slate-500 space-y-1 text-left pt-2 border-t border-slate-100">
+              <div class="flex justify-between">
+                <span>Jawaban Benar:</span>
+                <strong class="text-emerald-600">{{ rankTeam.correctAnswers }} Soal</strong>
+              </div>
+              <div class="flex justify-between">
+                <span>Jawaban Salah:</span>
+                <strong class="text-rose-500">{{ rankTeam.wrongAnswers }} Soal</strong>
+              </div>
+              <div class="flex justify-between">
+                <span>Anggota:</span>
+                <strong class="text-slate-700 truncate max-w-[120px]">{{ rankTeam.members.join(', ') || '-' }}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TOMBOL AKSI HASIL -->
+        <div class="no-print bg-white rounded-3xl p-6 shadow-lg border-2 border-slate-100 flex flex-wrap items-center justify-center gap-3">
+          <button @click="replayGame" class="px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl text-sm shadow transition-all flex items-center gap-2">
+            <i class="fa-solid fa-rotate-right"></i> Main Lagi
+          </button>
+
+          <button @click="currentScreen = 'questions'" class="px-6 py-3.5 bg-brandOrange hover:bg-orange-600 text-white font-bold rounded-2xl text-sm shadow transition-all flex items-center gap-2">
+            <i class="fa-solid fa-pen-to-square"></i> Edit Soal
+          </button>
+
+          <button @click="currentScreen = 'setup'" class="px-6 py-3.5 bg-brandBlue hover:bg-blue-600 text-white font-bold rounded-2xl text-sm shadow transition-all flex items-center gap-2">
+            <i class="fa-solid fa-sliders"></i> Pengaturan Game
+          </button>
+
+          <button @click="currentScreen = 'recap'" class="px-6 py-3.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-2xl text-sm shadow transition-all flex items-center gap-2">
+            <i class="fa-solid fa-file-invoice"></i> Lihat Rekap Tabel
+          </button>
+
+          <button @click="showConfirmReset = true" class="px-6 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-2xl text-sm transition-all flex items-center gap-2">
+            <i class="fa-solid fa-power-off"></i> Reset Game
+          </button>
+        </div>
+
+      </section>
+
+      <!-- ========================================== -->
+      <!-- 6. SCREEN: REKAP DETAIL & CETAK            -->
+      <!-- ========================================== -->
+      <section v-if="currentScreen === 'recap'" class="pop-in max-w-4xl mx-auto w-full space-y-6">
+        
+        <div class="bg-white rounded-3xl p-6 md:p-8 shadow-lg border-2 border-slate-100 space-y-6">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b pb-4">
+            <div>
+              <h2 class="font-fredoka text-3xl font-bold text-slate-800">📊 REKAPITULASI HASIL KUIS</h2>
+              <p class="text-xs text-slate-500">Laporan evaluasi hasil pertandingan kuis multi-tim.</p>
+            </div>
+
+            <div class="no-print flex items-center gap-2">
+              <button @click="printRecap" class="px-5 py-2.5 bg-brandBlue hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow flex items-center gap-2">
+                <i class="fa-solid fa-print"></i> Cetak / Simpan PDF
+              </button>
+              <button @click="currentScreen = 'results'" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-2xl font-bold text-sm">
+                Kembali
+              </button>
+            </div>
+          </div>
+
+          <!-- TABEL HASIL PRINTABLE -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 font-fredoka text-sm">
+                  <th class="p-3 border">Peringkat</th>
+                  <th class="p-3 border">Nama Tim</th>
+                  <th class="p-3 border">Anggota Tim</th>
+                  <th class="p-3 border text-center">Benar</th>
+                  <th class="p-3 border text-center">Salah</th>
+                  <th class="p-3 border text-right">Total Skor</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(rTeam, idx) in rankedTeams" :key="idx" class="border-b text-sm font-semibold text-slate-800">
+                  <td class="p-3 border font-fredoka font-bold">
+                    Juara {{ idx + 1 }}
+                  </td>
+                  <td class="p-3 border font-bold text-indigo-700">{{ rTeam.name }}</td>
+                  <td class="p-3 border text-xs text-slate-600">{{ rTeam.members.join(', ') || '-' }}</td>
+                  <td class="p-3 border text-center text-emerald-600 font-bold">{{ rTeam.correctAnswers }}</td>
+                  <td class="p-3 border text-center text-rose-500 font-bold">{{ rTeam.wrongAnswers }}</td>
+                  <td class="p-3 border text-right font-fredoka text-base text-brandBlue font-extrabold">{{ rTeam.score }} Poin</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="text-xs text-slate-400 text-right pt-4">
+            Dicetak pada: {{ new Date().toLocaleString('id-ID') }}
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="no-print bg-white/60 border-t border-slate-200 text-center py-4 text-xs font-semibold text-slate-500">
+      ⚡ <strong>FLASH QUIZ !</strong> &copy; Multi-Subject Interactive Classroom Game Engine
+    </footer>
+
+    <!-- MODAL CONFIRM RESET -->
+    <div v-if="showConfirmReset" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl pop-in">
+        <div class="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto text-3xl">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3 class="font-fredoka text-2xl font-bold text-slate-800">Reset Permainan?</h3>
+        <p class="text-xs text-slate-500">Seluruh skor dan progres kuis saat ini akan dihapus.</p>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button @click="showConfirmReset = false" class="w-full py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl text-xs">
+            Batal
+          </button>
+          <button @click="resetAllGame" class="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl text-xs shadow">
+            Ya, Reset
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const { createApp } = Vue;
+
+    createApp({
+      data() {
+        return {
+          currentScreen: 'setup', // setup, questions, confirm, game, results, recap
+          soundEnabled: true,
+          showConfirmReset: false,
+          showReadyOverlay: false,
+          showFeedback: false,
+          countdownText: '3',
+
+          // Configuration
+          gameConfig: {
+            termen: 'Kuis Kelas Interaktif SMP',
+            defaultPoints: 10
+          },
+
+          // Teams Data
+          teams: [
+            { name: 'Tim Garuda', members: ['Ahmad', 'Budi'], score: 0, correctAnswers: 0, wrongAnswers: 0, turnCounter: 0 },
+            { name: 'Tim Rajawali', members: ['Citra', 'Dewi'], score: 0, correctAnswers: 0, wrongAnswers: 0, turnCounter: 0 },
+            { name: 'Tim Hiu', members: ['Eko', 'Fani'], score: 0, correctAnswers: 0, wrongAnswers: 0, turnCounter: 0 }
+          ],
+
+          // Questions Data
+          questions: [],
+
+          // Game Play State
+          currentQuestionIndex: 0,
+          currentTurnIndex: 0,
+          isAnswered: false,
+          lastResult: { isCorrect: false, earnedPoints: 0 },
+
+          // Web Audio Synthesizer Context
+          audioCtx: null
+        }
+      },
+
+      computed: {
+        activeQuestion() {
+          return this.questions[this.currentQuestionIndex] || {};
+        },
+
+        currentTurnTeam() {
+          return this.teams[this.currentTurnIndex] || this.teams[0];
+        },
+
+        totalPossiblePoints() {
+          return this.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+        },
+
+        rankedTeams() {
+          // Sort teams by score descending, then by correct answers
+          return [...this.teams].sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return b.correctAnswers - a.correctAnswers;
+          });
+        }
+      },
+
+      mounted() {
+        // Load preset demo questions by default on startup
+        this.loadSampleData();
+      },
+
+      methods: {
+        // Web Audio Synthesizer Sound Generator
+        playSound(type) {
+          if (!this.soundEnabled) return;
+          try {
+            if (!this.audioCtx) {
+              this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            const ctx = this.audioCtx;
+            if (ctx.state === 'suspended') {
+              ctx.resume();
+            }
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            const now = ctx.currentTime;
+
+            if (type === 'correct') {
+              // Happy major arpeggio
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(523.25, now); // C5
+              osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+              osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+              osc.frequency.setValueAtTime(1046.50, now + 0.3); // C6
+              gain.gain.setValueAtTime(0.3, now);
+              gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+              osc.start(now);
+              osc.stop(now + 0.6);
+            } else if (type === 'wrong') {
+              // Buzzing low sound
+              osc.type = 'sawtooth';
+              osc.frequency.setValueAtTime(180, now);
+              osc.frequency.linearRampToValueAtTime(110, now + 0.3);
+              gain.gain.setValueAtTime(0.3, now);
+              gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+              osc.start(now);
+              osc.stop(now + 0.4);
+            } else if (type === 'tick') {
+              // Sharp click
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(600, now);
+              gain.gain.setValueAtTime(0.2, now);
+              gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+              osc.start(now);
+              osc.stop(now + 0.08);
+            } else if (type === 'win') {
+              // Fanfare chord
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(523.25, now);
+              osc.frequency.setValueAtTime(659.25, now + 0.15);
+              osc.frequency.setValueAtTime(783.99, now + 0.3);
+              gain.gain.setValueAtTime(0.4, now);
+              gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+              osc.start(now);
+              osc.stop(now + 1.2);
+            }
+          } catch(e) {
+            console.warn("Audio Context Error:", e);
+          }
+        },
+
+        toggleSound() {
+          this.soundEnabled = !this.soundEnabled;
+        },
+
+        goToHome() {
+          this.currentScreen = 'setup';
+        },
+
+        // Team Management
+        addTeam() {
+          const nextIndex = this.teams.length + 1;
+          this.teams.push({
+            name: `Tim ${String.fromCharCode(64 + nextIndex)}`,
+            members: ['Anggota 1', 'Anggota 2'],
+            score: 0,
+            correctAnswers: 0,
+            wrongAnswers: 0,
+            turnCounter: 0
+          });
+        },
+
+        removeTeam(index) {
+          if (this.teams.length > 2) {
+            this.teams.splice(index, 1);
+          }
+        },
+
+        addMember(teamIndex) {
+          this.teams[teamIndex].members.push('');
+        },
+
+        removeMember(teamIndex, memberIndex) {
+          if (this.teams[teamIndex].members.length > 1) {
+            this.teams[teamIndex].members.splice(memberIndex, 1);
+          }
+        },
+
+        // Color Utilities
+        getTeamBgClass(idx) {
+          const bgList = ['bg-blue-500', 'bg-amber-500', 'bg-emerald-500', 'bg-purple-500', 'bg-rose-500', 'bg-teal-500'];
+          return bgList[idx % bgList.length];
+        },
+
+        getTeamColorBorderClass(idx) {
+          const borders = ['border-blue-300 bg-blue-50/20', 'border-amber-300 bg-amber-50/20', 'border-emerald-300 bg-emerald-50/20', 'border-purple-300 bg-purple-50/20', 'border-rose-300 bg-rose-50/20', 'border-teal-300 bg-teal-50/20'];
+          return borders[idx % borders.length];
+        },
+
+        getTeamActiveCardClass(idx) {
+          const activeBorders = ['border-blue-500 bg-blue-50 ring-2 ring-blue-400', 'border-amber-500 bg-amber-50 ring-2 ring-amber-400', 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-400', 'border-purple-500 bg-purple-50 ring-2 ring-purple-400', 'border-rose-500 bg-rose-50 ring-2 ring-rose-400', 'border-teal-500 bg-teal-50 ring-2 ring-teal-400'];
+          return activeBorders[idx % activeBorders.length];
+        },
+
+        getTeamTextColorClass(idx) {
+          const colors = ['text-blue-600', 'text-amber-600', 'text-emerald-600', 'text-purple-600', 'text-rose-600', 'text-teal-600'];
+          return colors[idx % colors.length];
+        },
+
+        getActiveMemberName(team) {
+          if (!team.members || team.members.length === 0) return '';
+          const mIdx = team.turnCounter % team.members.length;
+          return team.members[mIdx] || `Anggota ${mIdx + 1}`;
+        },
+
+        // Questions Management
+        applyGlobalPoints() {
+          const pt = this.gameConfig.defaultPoints || 10;
+          this.questions.forEach(q => q.points = pt);
+        },
+
+        addQuestion() {
+          this.questions.push({
+            id: Date.now() + Math.random(),
+            type: 'mc', // 'mc' or 'tf'
+            question: '',
+            options: ['', '', '', ''],
+            correctAnswer: 0, // index for MC, boolean for TF
+            points: this.gameConfig.defaultPoints || 10
+          });
+        },
+
+        duplicateQuestion(index) {
+          const original = this.questions[index];
+          const clone = JSON.parse(JSON.stringify(original));
+          clone.id = Date.now() + Math.random();
+          this.questions.splice(index + 1, 0, clone);
+        },
+
+        removeQuestion(index) {
+          this.questions.splice(index, 1);
+        },
+
+        handleTypeChange(question) {
+          if (question.type === 'tf') {
+            question.correctAnswer = true;
+          } else {
+            question.correctAnswer = 0;
+            if (!question.options || question.options.length < 4) {
+              question.options = ['', '', '', ''];
+            }
+          }
+        },
+
+        loadSampleData() {
+          this.gameConfig.termen = "Kuis Pengetahuan Umum Kelas VIII";
+          this.gameConfig.defaultPoints = 10;
+
+          this.questions = [
+            {
+              id: 1,
+              type: 'mc',
+              question: 'Monumen Nasional (Monas) yang menjadi ikon Indonesia terletak di kota...',
+              options: ['Bandung', 'Jakarta', 'Surabaya', 'Yogyakarta'],
+              correctAnswer: 1,
+              points: 10
+            },
+            {
+              id: 2,
+              type: 'tf',
+              question: 'Proses pembuatan makanan pada tumbuhan hijau dengan bantuan sinar matahari disebut Fotosintesis.',
+              options: ['', '', '', ''],
+              correctAnswer: true,
+              points: 10
+            },
+            {
+              id: 3,
+              type: 'mc',
+              question: 'Berapakah hasil perhitungan matematika sederhana dari 15 × 4 - 20 ?',
+              options: ['30', '40', '50', '60'],
+              correctAnswer: 1,
+              points: 10
+            },
+            {
+              id: 4,
+              type: 'tf',
+              question: 'Planet Pluto saat ini masih dikategorikan sebagai planet utama dalam Tata Surya kita.',
+              options: ['', '', '', ''],
+              correctAnswer: false,
+              points: 10
+            },
+            {
+              id: 5,
+              type: 'mc',
+              question: 'Candi Borobudur yang megah di Magelang, Jawa Tengah merupakan candi peninggalan agama...',
+              options: ['Hindu', 'Buddha', 'Islam', 'Konghucu'],
+              correctAnswer: 1,
+              points: 10
+            }
+          ];
+        },
+
+        goToQuestions() {
+          if (this.teams.length < 2) {
+            alert('Minimal buat 2 Tim untuk memulai kuis!');
+            return;
+          }
+          this.currentScreen = 'questions';
+        },
+
+        startConfirmation() {
+          if (this.questions.length === 0) {
+            alert('Buat minimal 1 soal terlebih dahulu!');
+            return;
+          }
+          this.currentScreen = 'confirm';
+        },
+
+        // Game Play Execution
+        launchQuizBattle() {
+          // Reset team scores
+          this.teams.forEach(t => {
+            t.score = 0;
+            t.correctAnswers = 0;
+            t.wrongAnswers = 0;
+            t.turnCounter = 0;
+          });
+
+          this.currentQuestionIndex = 0;
+          this.currentTurnIndex = 0;
+          this.currentScreen = 'game';
+          this.triggerTurnReadySequence();
+        },
+
+        triggerTurnReadySequence() {
+          this.showReadyOverlay = true;
+          this.isAnswered = false;
+          this.showFeedback = false;
+
+          const steps = ['READY...', 'SET...', 'GO!'];
+          let idx = 0;
+          this.countdownText = steps[0];
+          this.playSound('tick');
+
+          const interval = setInterval(() => {
+            idx++;
+            if (idx < steps.length) {
+              this.countdownText = steps[idx];
+              this.playSound('tick');
+            } else {
+              clearInterval(interval);
+              this.showReadyOverlay = false;
+            }
+          }, 700);
+        },
+
+        submitAnswer(userChoice) {
+          if (this.isAnswered) return;
+          this.isAnswered = true;
+
+          const currentQ = this.activeQuestion;
+          const currentTeam = this.teams[this.currentTurnIndex];
+          let isCorrect = false;
+
+          if (currentQ.type === 'mc') {
+            isCorrect = (userChoice === currentQ.correctAnswer);
+          } else if (currentQ.type === 'tf') {
+            isCorrect = (userChoice === currentQ.correctAnswer);
+          }
+
+          if (isCorrect) {
+            currentTeam.score += currentQ.points;
+            currentTeam.correctAnswers += 1;
+            this.lastResult = { isCorrect: true, earnedPoints: currentQ.points };
+            this.playSound('correct');
+
+            // Trigger Confetti effect
+            if (typeof confetti === 'function') {
+              confetti({
+                particleCount: 80,
+                spread: 70,
+                origin: { y: 0.6 }
+              });
+            }
+          } else {
+            currentTeam.wrongAnswers += 1;
+            this.lastResult = { isCorrect: false, earnedPoints: 0 };
+            this.playSound('wrong');
+          }
+
+          // Advance member turn count for team
+          currentTeam.turnCounter += 1;
+
+          // Show reaction dialog
+          this.showFeedback = true;
+        },
+
+        getCorrectAnswerText(q) {
+          if (q.type === 'mc') {
+            const letter = ['A', 'B', 'C', 'D'][q.correctAnswer];
+            return `${letter}. ${q.options[q.correctAnswer] || ''}`;
+          } else if (q.type === 'tf') {
+            return q.correctAnswer ? '✅ BENAR' : '❌ SALAH';
+          }
+          return '';
+        },
+
+        nextQuestion() {
+          this.showFeedback = false;
+
+          if (this.currentQuestionIndex < this.questions.length - 1) {
+            this.currentQuestionIndex += 1;
+            // Rotate Team Turn
+            this.currentTurnIndex = (this.currentTurnIndex + 1) % this.teams.length;
+            this.triggerTurnReadySequence();
+          } else {
+            // All questions finished -> Leaderboard
+            this.currentScreen = 'results';
+            this.playSound('win');
+            if (typeof confetti === 'function') {
+              confetti({
+                particleCount: 150,
+                spread: 100,
+                origin: { y: 0.4 }
+              });
+            }
+          }
+        },
+
+        replayGame() {
+          this.launchQuizBattle();
+        },
+
+        resetAllGame() {
+          this.showConfirmReset = false;
+          this.teams.forEach(t => {
+            t.score = 0;
+            t.correctAnswers = 0;
+            t.wrongAnswers = 0;
+            t.turnCounter = 0;
+          });
+          this.currentQuestionIndex = 0;
+          this.currentTurnIndex = 0;
+          this.currentScreen = 'setup';
+        },
+
+        printRecap() {
+          window.print();
+        }
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
